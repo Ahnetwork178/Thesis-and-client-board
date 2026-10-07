@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AH NETWORK Thesis Client Control Board</title>
+<style>
+:root{--bg:#f3f1ec;--card:#fff;--ink:#1d2a2a;--mut:#667070;--line:#d9d5cb;--red:#c8372d;--org:#d9822b;--yel:#b8a21a;--gry:#8a8f8f;--grn:#2f8f5b;--acc:#16403f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a1a;--card:#1b2626;--ink:#e8eeee;--mut:#9aa8a8;--line:#2e3d3d;--acc:#6fc2bd}}
+:root[data-theme="dark"]{--bg:#121a1a;--card:#1b2626;--ink:#e8eeee;--mut:#9aa8a8;--line:#2e3d3d;--acc:#6fc2bd}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Georgia,"Times New Roman",serif}
+.w{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:4px 0 2px}h2{font-size:17px;margin:0 0 8px}
+.sub{color:var(--mut);font-family:system-ui,sans-serif;font-size:13px}
+.sans,button,input,select,textarea{font-family:system-ui,sans-serif}
+.alarm{background:var(--card);border:2px solid var(--red);border-radius:6px;padding:12px;margin:14px 0}
+.alarm.ok{border-color:var(--grn)}
+.alarm li{margin:3px 0;font-family:system-ui,sans-serif;font-size:14px}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.st{flex:1 1 110px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-family:system-ui,sans-serif}
+.st b{display:block;font-size:22px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;align-items:center}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:7px 11px;font-size:14px}
+button.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+:root[data-theme="dark"] button.p{color:#0b1414}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.p{color:#0b1414}}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--org);outline-offset:1px}
+input,select,textarea{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:7px;font-size:14px;width:100%}
+.bar input,.bar select{width:auto}
+.c{background:var(--card);border:1px solid var(--line);border-left:7px solid var(--gry);border-radius:6px;padding:10px 12px;margin:8px 0}
+.c.RED{border-left-color:var(--red)}.c.ORG{border-left-color:var(--org)}.c.YEL{border-left-color:var(--yel)}.c.GRN{border-left-color:var(--grn)}.c.HOLD{border-left-color:var(--gry);opacity:.85}
+.top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.nm{font-weight:bold;font-size:16px}.tp{color:var(--mut);font-size:13px}
+.tag{display:inline-block;font-family:system-ui,sans-serif;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:1px 8px;margin:2px 3px 2px 0}
+.tag.r{border-color:var(--red);color:var(--red)}.tag.g{border-color:var(--grn);color:var(--grn)}.tag.o{border-color:var(--org);color:var(--org)}
+.prog{height:6px;background:var(--line);border-radius:3px;margin:8px 0;overflow:hidden}.prog i{display:block;height:100%;background:var(--acc)}
+.acts{display:flex;flex-wrap:wrap;gap:6px}
+dialog{border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);max-width:460px;width:94%;padding:16px}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:8px}.f label{font-family:system-ui,sans-serif;font-size:12px;color:var(--mut)}.f .full{grid-column:1/-1}
+input:disabled{opacity:.45}@media print{.w{display:none!important}#rc{display:block!important;position:static;border:0;color:#000;background:#fff;max-width:100%}.nop{display:none!important}}
+.empty{padding:26px;text-align:center;color:var(--mut)}
+</style></head><body><div class="w">
+<h1>Thesis Client Control Board</h1>
+<div class="sub" id="today"></div>
+<div id="alarm"></div><div id="top3"></div>
+<div class="stats" id="stats"></div>
+<div class="bar">
+<button class="p" onclick="openForm()">Add client</button>
+<select id="fl" onchange="render()"><option value="all">All clients</option><option value="active">Active only</option><option value="hold">Supervisor hold</option><option value="paid">Paid in full</option><option value="unpaid">Owing money</option><option value="done">Delivered</option></select>
+<input id="q" placeholder="Search name or topic" oninput="render()">
+<button onclick="exp()">Backup</button><button onclick="document.getElementById('imp').click()">Restore</button>
+<input type="file" id="imp" accept=".json" style="display:none" onchange="imp(this)"><button onclick="sopen()">Settings</button><button onclick="pull()">Pull from cloud</button><button onclick="newSess()">Start new session</button><button onclick="openArc()">Archive</button><span class="sub" id="sync"></span>
+</div>
+<div id="list"></div>
+<dialog id="dg"><form method="dialog" onsubmit="return false"><h2 id="dt">Client</h2><div class="f">
+<div class="full"><label>Client name</label><input id="n"></div>
+<div class="full"><label>Thesis topic</label><input id="t"></div>
+<div><label>Level</label><select id="lv" onchange="fs()"><option>ND</option><option>HND</option><option>BSc / BEd</option><option>PGD / MSc / PhD</option></select></div><div><label>Current stage</label><select id="s"></select></div>
+<div><label>Lane</label><select id="l"><option value="A">Active</option><option value="H">Supervisor hold</option></select></div>
+<div><label>Defense date</label><input type="date" id="d"></div>
+<div><label>Fee agreed (₦)</label><input type="number" id="fe" oninput="pf()"></div>
+<div><label>Amount paid (₦)</label><input type="number" id="pd" oninput="pf()"></div><div id="plw"><label>Plagiarism cost (₦) <span id="plh"></span></label><input type="number" id="pl"></div>
+<div><label>Phone</label><input id="ph"></div>
+<div><label>Pages</label><input type="number" id="pg"></div><div><label>Hardcover copies</label><input type="number" id="cp"></div><div><label>Cover colour</label><input id="cv"></div><div><label>Expenses on this job (₦)</label><input type="number" id="ex"></div><div><label>Contact client again on</label><input type="date" id="fu"></div><div><label>Delivered and confirmed?</label><select id="cf"><option value="">No</option><option value="1">Yes</option></select></div><div class="full"><label>What is pending / reason for delay (included in WhatsApp update)</label><textarea id="nt" rows="2"></textarea></div>
+</div><div class="bar"><button class="p" onclick="save()">Save</button><button onclick="dg.close()">Cancel</button><button id="del" onclick="rm()" style="margin-left:auto;color:var(--red)">Delete</button></div></form></dialog>
+<dialog id="ad"><h2>Archive of past sessions</h2><div id="ab"></div><div class="bar"><button onclick="$('ad').close()">Close</button></div></dialog>
+<dialog id="sd"><h2>Settings</h2><div class="f"><div class="full"><label>Business name (shown on receipts)</label><input id="sb"></div><div><label>Minimum deposit %</label><input type="number" id="sp"></div><div class="full"><label>Cloud sync URL (optional)</label><input id="su" placeholder="https://script.google.com/macros/s/.../exec"></div></div><div class="bar"><button class="p" onclick="ssave()">Save</button><button onclick="$('sd').close()">Close</button></div></dialog>
+<script>
+var ST=["Ch 1-3 (awaiting supervisor)","Ch 4","Ch 5","Abstract","References","Consolidation","Plagiarism test","Corrections","Preliminary pages","Final PDF","Soft spiral bind","Defense","Defense corrections","Hardcover bind","Delivered"];
+var NEAR=3,KEY="thesisBoard1",D=[],eid=null,dg=document.getElementById("dg");
+function ld(){try{D=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){D=[]}try{A=JSON.parse(localStorage.getItem("thesisArc1"))||[]}catch(e){A=[]}}
+function sv(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}push()}
+var BN="A-H NETWORKS COMPUTERS TECH",A=[],CF={dep:50,biz:BN,url:""},tmr;
+function sa(){try{localStorage.setItem("thesisArc1",JSON.stringify(A))}catch(e){}}
+function newSess(){var done=D.filter(function(c){return c.s>=14&&owe(c)===0}),keep=D.length-done.length;
+ if(!done.length){alert("No client is both delivered and fully paid yet, so nothing can be archived.");return}
+ var col=done.reduce(function(a,c){return a+(+c.pd||0)},0),ex=done.reduce(function(a,c){return a+(+c.ex||0)},0);
+ if(!confirm("Start a new session?\n\n"+done.length+" delivered and fully paid clients will move to the archive.\nCollected: "+N(col)+"\nExpenses: "+N(ex)+"\nNet profit: "+N(col-ex)+"\n\n"+keep+" clients stay on the board (not delivered or still owing).\n\nA backup file will download first."))return;
+ exp();var ts=Date.now();done.forEach(function(c){c.ar=ts;A.push(c)});D=D.filter(function(c){return !(c.s>=14&&owe(c)===0)});sa();sv();render()}
+function openArc(){var q=A.slice().sort(function(a,b){return b.ar-a.ar});
+ var tc=A.reduce(function(s,c){return s+(+c.pd||0)},0),te=A.reduce(function(s,c){return s+(+c.ex||0)},0);
+ $("ab").innerHTML='<p class="sub">'+A.length+' archived · collected '+N(tc)+' · expenses '+N(te)+' · net '+N(tc-te)+'</p>'+(q.length?q.map(function(c){return'<div class="c GRN"><div class="nm">'+esc(c.n)+'</div><div class="tp">'+esc(c.t||"")+'</div><div class="sans" style="font-size:13px">'+esc(c.lv||"ND")+' · archived '+new Date(c.ar).toDateString()+' · paid '+N(c.pd||0)+'</div><div class="acts" style="margin-top:6px"><button onclick="unarc(\''+c.id+'\')">Restore to board</button></div></div>'}).join(""):'<div class="empty">Nothing archived yet.</div>');
+ $("ad").showModal()}
+function unarc(id){var c=A.filter(function(x){return x.id===id})[0];A=A.filter(function(x){return x.id!==id});delete c.ar;D.push(c);sa();sv();render();openArc()}
+function cfl(){try{CF=Object.assign(CF,JSON.parse(localStorage.getItem("thesisCfg1")))}catch(e){}}
+function msg(t){$("sync").textContent=t}
+function push(){if(!CF.url)return;clearTimeout(tmr);tmr=setTimeout(function(){msg("Syncing...");fetch(CF.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({clients:D,archive:A})}).then(function(){msg("Cloud saved "+new Date().toLocaleTimeString())}).catch(function(){msg("Cloud sync failed")})},1500)}
+function pull(){if(!CF.url){alert("Add your cloud sync URL in Settings first.");return}
+ fetch(CF.url).then(function(r){return r.json()}).then(function(j){var cl=Array.isArray(j)?j:(j.clients||null);if(cl&&confirm("Replace the data on this device with cloud data ("+cl.length+" clients)?")){D=cl;if(!Array.isArray(j)){A=j.archive||[];sa()}try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}render();msg("Pulled from cloud")}}).catch(function(){alert("Could not reach the cloud URL. Cloud sync works only from the downloaded file, not the claude.ai link.")})}
+function sopen(){$("sb").value=CF.biz;$("sp").value=CF.dep;$("su").value=CF.url;$("sd").showModal()}
+function ssave(){CF.biz=$("sb").value;CF.dep=+$("sp").value||50;CF.url=$("su").value.trim();try{localStorage.setItem("thesisCfg1",JSON.stringify(CF))}catch(e){}$("sd").close();render();push()}
+function exa(id){var c=g(id),v=prompt("Expense on this job (₦): printing, binding, checker fee");if(v&&+v>0){c.ex=(+c.ex||0)+ +v;c.u=Date.now();sv();render()}}
+function rcpt(id){var c=g(id),L=c.pay||[],sm=L.reduce(function(a,x){return a+x.a},0),oth=(+c.pd||0)-sm;
+ var rows=(oth>0?'<tr><td>Earlier payments</td><td>'+N(oth)+'</td></tr>':'')+L.map(function(x){return'<tr><td>'+new Date(x.t).toDateString()+'</td><td>'+N(x.a)+'</td></tr>'}).join("");
+ $("rcb").innerHTML='<h2>'+esc(CF.biz||BN)+'</h2><p>Received from: <b>'+esc(c.n)+'</b><br>Project: '+esc(c.t||"-")+'<br>Date: '+new Date().toDateString()+'</p><table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><tr><th align="left">Date</th><th align="left">Amount paid</th></tr>'+rows+'</table><p>Total fee: <b>'+N((+c.fe||0)+(c.lv==="ND"?0:(+c.pl||0)))+'</b><br>Total paid: <b>'+N(c.pd||0)+'</b><br>Balance: <b>'+N(owe(c))+'</b></p><p>Thank you for your patronage.</p>';
+ $("rc").showModal()}
+function $(i){return document.getElementById(i)}
+function days(d){if(!d)return null;var a=new Date(d+"T00:00:00"),b=new Date();b.setHours(0,0,0,0);return Math.round((a-b)/864e5)}
+function ago(ts){return Math.floor((Date.now()-ts)/864e5)}
+function cls(c){
+ if(c.s>=14)return{k:"GRN",r:5,l:"Delivered"};
+ if(c.l==="H")return{k:"HOLD",r:4,l:"Supervisor hold"};
+ var d=days(c.d);
+ if(d!==null&&d<=13&&c.s<11)return{k:"RED",r:1,l:"Defense critical"};
+ if(c.s>=NEAR)return{k:"ORG",r:2,l:"Near complete"};
+ return{k:"YEL",r:3,l:"Active, not defense-ready"}}
+function owe(c){return Math.max(0,(+c.fe||0)+(c.lv==="ND"?0:(+c.pl||0))-(+c.pd||0))}
+function cmp(a,b){if(a.p.r!==b.p.r)return a.p.r-b.p.r;var pa=owe(a.c)===0?0:1,pb=owe(b.c)===0?0:1;if(pa!==pb)return pa-pb;var da=days(a.c.d),db=days(b.c.d);da=da===null?999:da;db=db===null?999:db;if(da!==db)return da-db;return b.c.s-a.c.s}
+function nxt(c){var i=c.s+1;if(c.lv==="ND"&&i===6)i++;return i}
+function bank(id){var c=g(id);c.bk=!c.bk;sv();render()}
+function wa(id){var c=g(id),p=String(c.ph||"").replace(/\D/g,"");if(!p){alert("Add this client's phone number first (Edit).");return}
+ if(p[0]==="0")p="234"+p.slice(1);else if(p.slice(0,3)!=="234"&&p.length<=10)p="234"+p;
+ var d=days(c.d),ow=owe(c);
+ var m="*"+(CF.biz||BN)+"*\n\nHello "+c.n+", this is an update on your project"+(c.t?' "'+c.t+'"':"")+".\n\nCurrent stage: "+ST[c.s]+"."
+ +(c.l==="H"?"\nStatus: on hold, waiting for your supervisor's approval or instruction before the next stage can start.":"")
+ +(c.nt?"\nWhat is still pending: "+c.nt+".":"")
+ +(d!==null&&d>=0?"\nDefense date: "+c.d+" ("+d+" days left).":"")
+ +(ow>0?"\nOutstanding balance: "+N(ow)+".":"")
+ +"\n\nThank you for your patience. I appreciate your understanding of any delay and I will keep you updated.";
+ c.lc=Date.now();if(c.fu&&days(c.fu)<=0)c.fu="";sv();render();window.open("https://wa.me/"+p+"?text="+encodeURIComponent(m),"_blank")}
+function N(x){return "₦"+Number(x).toLocaleString()}
+function render(){
+ $("today").textContent=new Date().toDateString()+" · spiral bind and defenses target towards Oct · hardcover target: first week of Nov";
+ var f=$("fl").value,q=$("q").value.toLowerCase();
+ var L=D.map(function(c){return{c:c,p:cls(c)}}).filter(function(o){var c=o.c;
+  if(q&&(c.n+" "+c.t).toLowerCase().indexOf(q)<0)return false;
+  if(f==="active")return o.p.r<=3;if(f==="hold")return o.p.r===4;if(f==="done")return o.p.r===5;
+  if(f==="paid")return owe(c)===0&&c.fe>0;if(f==="unpaid")return owe(c)>0;return true});
+ L.sort(cmp);
+ var all=D.map(function(c){return{c:c,p:cls(c)}});
+ var cnt=function(r){return all.filter(function(o){return o.p.r===r}).length};
+ var exs=D.reduce(function(s,c){return s+(+c.ex||0)},0),owed=D.reduce(function(s,c){return s+owe(c)},0),rec=D.reduce(function(s,c){return s+(+c.pd||0)},0);
+ $("stats").innerHTML=[["Defense critical",cnt(1)],["Near complete",cnt(2)],["Active",cnt(3)],["On hold",cnt(4)],["Collected",N(rec)],["Still owed",N(owed)],["Expenses",N(exs)],["Net so far",N(rec-exs)]].map(function(x){return '<div class="st">'+x[0]+'<b>'+x[1]+'</b></div>'}).join("");
+ var al=[];
+ all.forEach(function(o){var c=o.c;if(o.p.r>=4)return;var st=ago(c.u),d=days(c.d);
+  if(o.p.r===2&&st>=2)al.push("<b>"+esc(c.n)+"</b> is close to finishing ("+ST[c.s]+") but untouched for "+st+" days. Push it over the line.");
+  else if(o.p.r===1&&st>=2)al.push("<b>"+esc(c.n)+"</b> is defense critical ("+(d<0?Math.abs(d)+" days past defense date":d+" days left")+"), no update for "+st+" days.");
+  else if(o.p.r===3&&st>=5)al.push("<b>"+esc(c.n)+"</b> has been forgotten for "+st+" days.");
+  else if(o.p.r===1&&d!==null&&d<=3)al.push("<b>"+esc(c.n)+"</b> defends in "+d+" days. Stage: "+ST[c.s]+".")});
+ var holdUnpaid=all.filter(function(o){return o.p.r===2&&owe(o.c)>0});
+ holdUnpaid.forEach(function(o){al.push("<b>"+esc(o.c.n)+"</b> is nearly done but owes "+N(owe(o.c))+". Collect before the final files go out.")});
+ D.forEach(function(c){if(c.s>=13&&!c.bk)al.push("Save <b>"+esc(c.n)+"</b>'s final thesis to your Project Bank. Not backed up yet.")});
+ all.forEach(function(o){var c=o.c;if(o.p.r<=3&&c.fe>0&&c.s>=1&&(+c.pd||0)<c.fe*CF.dep/100)al.push("<b>"+esc(c.n)+"</b> has paid below the "+CF.dep+"% deposit but work has started. Collect before continuing.")});
+ D.forEach(function(c){if(c.s<14&&c.fu&&days(c.fu)<=0)al.push("Follow up with <b>"+esc(c.n)+"</b> (due "+c.fu+").");
+  if(c.s>=13&&c.s<14&&!(c.cp&&c.cv))al.push("Set copies and cover colour for <b>"+esc(c.n)+"</b> before hardcover binding.");
+  if(c.s===14&&!c.cf)al.push("Get delivery confirmation from <b>"+esc(c.n)+"</b>.")});
+ var T=all.filter(function(o){return o.p.r<=3}).sort(cmp).slice(0,3);
+ $("top3").innerHTML=T.length?'<div class="alarm ok" style="border-color:var(--acc)"><h2>Work on these first today</h2><ol>'+T.map(function(o){return'<li>'+esc(o.c.n)+': '+ST[o.c.s]+', then '+ST[nxt(o.c)]+'</li>'}).join("")+'</ol></div>':"";
+ $("alarm").innerHTML=D.length?(al.length?'<div class="alarm"><h2>Do not forget these ('+al.length+')</h2><ul>'+al.map(function(x){return"<li>"+x+"</li>"}).join("")+'</ul></div>':'<div class="alarm ok"><h2>Nobody is slipping. Keep the rhythm.</h2></div>'):"";
+ $("list").innerHTML=L.length?L.map(function(o){var c=o.c,d=days(c.d),ow=owe(c);
+  var ds=d===null?"":(d<0?'<span class="tag r">defense passed '+Math.abs(d)+'d ago</span>':'<span class="tag '+(d<=7?'r':'')+'">defense in '+d+' days</span>');
+  var pay=!c.fe?'<span class="tag">fee not set</span>':ow===0?'<span class="tag g">Paid in full</span>':'<span class="tag o">Owes '+N(ow)+(c.pl&&c.lv!=="ND"?' (incl. plagiarism '+N(c.pl)+')':'')+'</span>';
+  return '<div class="c '+o.p.k+'"><div class="top"><div><div class="nm">'+esc(c.n)+'</div><div class="tp">'+esc(c.t||"No topic yet")+'</div></div><div class="sans">'+o.p.l+'</div></div>'
+  +'<div class="prog"><i style="width:'+Math.round(c.s/14*100)+'%"></i></div>'
+  +'<div><span class="tag">'+esc(c.lv||"ND")+'</span><span class="tag">'+ST[c.s]+'</span>'+(c.s>=13&&!c.bk?'<span class="tag o">Not in Project Bank</span>':'')+ds+pay+'<span class="tag">updated '+(ago(c.u)===0?"today":ago(c.u)+"d ago")+'</span>'+(c.s>=10&&(c.pg||c.cp||c.cv)?'<span class="tag">'+(c.pg||"?")+' pages · '+(c.cp||"?")+' copies · '+esc(c.cv||"colour not set")+'</span>':'')+(c.fu&&c.s<14?'<span class="tag '+(days(c.fu)<=0?'r':'')+'">follow up '+c.fu+'</span>':'')+(c.lc?'<span class="tag">contacted '+(ago(c.lc)===0?"today":ago(c.lc)+"d ago")+'</span>':'')+(c.ex?'<span class="tag">Cost '+N(c.ex)+' · Profit '+N((+c.pd||0)-c.ex)+'</span>':'')+'</div>'
+  +(c.nt?'<div class="tp" style="margin-top:4px">Missing: '+esc(c.nt)+'</div>':'')
+  +'<div class="acts" style="margin-top:8px">'+(c.s<14?'<button class="p" onclick="adv(\''+c.id+'\')">Move to: '+ST[nxt(c)]+'</button>':'')
+  +'<button onclick="wa(\''+c.id+'\')">WhatsApp update</button><button onclick="pay(\''+c.id+'\')">Record payment</button><button onclick="rcpt(\''+c.id+'\')">Receipt</button><button onclick="exa(\''+c.id+'\')">Add expense</button><button onclick="hold(\''+c.id+'\')">'+(c.l==="H"?"Release to active":"Put on hold")+'</button>'+(c.s>=13?'<button onclick="bank(\''+c.id+'\')">'+(c.bk?"✓ In Project Bank":"Mark saved to Project Bank")+'</button>':'')+'<button onclick="openForm(\''+c.id+'\')">Edit</button></div></div>'}).join(""):'<div class="empty">No clients here yet. Add your first client to start the board.</div>'}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]})}
+function g(id){return D.filter(function(c){return c.id===id})[0]}
+function adv(id){var c=g(id);c.s=nxt(c);c.u=Date.now();sv();render()}
+function hold(id){var c=g(id);c.l=c.l==="H"?"A":"H";c.u=Date.now();sv();render()}
+function pay(id){var c=g(id),v=prompt("Amount received now (₦):");if(v&&+v>0){c.pd=(+c.pd||0)+ +v;(c.pay=c.pay||[]).push({a:+v,t:Date.now()});c.u=Date.now();sv();render();rcpt(id)}}
+function openForm(id){eid=id||null;var c=id?g(id):{n:"",t:"",s:0,l:"A",d:"",fe:"",pd:"",ph:"",nt:"",lv:"ND",pl:""};
+ $("lv").value=c.lv||"ND";fs(c.s);
+ $("dt").textContent=id?"Edit client":"Add client";$("del").style.display=id?"":"none";
+ $("n").value=c.n;$("t").value=c.t;$("l").value=c.l;$("d").value=c.d;$("fe").value=c.fe;$("pd").value=c.pd;$("pl").value=c.pl||"";$("ph").value=c.ph||"";$("nt").value=c.nt||"";$("pg").value=c.pg||"";$("cp").value=c.cp||"";$("cv").value=c.cv||"";$("ex").value=c.ex||"";$("fu").value=c.fu||"";$("cf").value=c.cf||"";pf();dg.showModal()}
+function fs(cur){var nd=$("lv").value==="ND";if(cur===undefined)cur=+$("s").value;if(nd&&cur===6)cur=7;
+ $("s").innerHTML=ST.map(function(x,i){return(nd&&i===6)?"":'<option value="'+i+'">'+x+'</option>'}).join("");$("s").value=cur;pf()}
+function pf(){var nd=$("lv").value==="ND";$("plw").style.display=nd?"none":"";var bal=(+$("fe").value||0)-(+$("pd").value||0);var on=!$("fe").value||bal>0;$("pl").disabled=!on;$("plh").textContent=on?"":"(locked: thesis fee fully paid)"}
+function save(){var n=$("n").value.trim();if(!n){$("n").focus();return}
+ var o={n:n,t:$("t").value.trim(),s:+$("s").value,l:$("l").value,d:$("d").value,fe:+$("fe").value||0,pd:+$("pd").value||0,ph:$("ph").value,nt:$("nt").value,lv:$("lv").value,pl:$("lv").value==="ND"?0:(+$("pl").value||0),bk:eid?g(eid).bk:false,pay:eid?(g(eid).pay||[]):[],lc:eid?g(eid).lc:0,pg:+$("pg").value||0,cp:+$("cp").value||0,cv:$("cv").value,ex:+$("ex").value||0,fu:$("fu").value,cf:$("cf").value,u:Date.now()};
+ if(eid){var c=g(eid);o.id=eid;D[D.indexOf(c)]=o}else{o.id="c"+Date.now();D.push(o)}
+ sv();dg.close();render()}
+function rm(){if(confirm("Delete this client permanently?")){D=D.filter(function(c){return c.id!==eid});sv();dg.close();render()}}
+function exp(){var b=new Blob([JSON.stringify({clients:D,archive:A})],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="thesis-board-backup.json";a.click()}
+function imp(i){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var j=JSON.parse(r.result);if(Array.isArray(j)){D=j}else{D=j.clients||[];A=j.archive||[]}sa();sv();render()}catch(e){alert("That file is not a valid backup.")}};r.readAsText(f)}
+cfl();ld();render();
+</script></div><dialog id="rc"><div id="rcb"></div><div class="bar nop"><button class="p" onclick="window.print()">Print / Save as PDF</button><button onclick="$('rc').close()">Close</button></div></dialog></body></html>
