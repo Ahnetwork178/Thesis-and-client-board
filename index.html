@@ -68,8 +68,8 @@ input:disabled{opacity:.45}@media print{.w{display:none!important}#rc{display:bl
 var ST=["Ch 1-3 (awaiting supervisor)","Ch 4","Ch 5","Abstract","References","Consolidation","Plagiarism test","Corrections","Preliminary pages","Final PDF","Soft spiral bind","Defense","Defense corrections","Hardcover bind","Delivered"];
 var NEAR=3,KEY="thesisBoard1",D=[],eid=null,dg=document.getElementById("dg");
 function ld(){try{D=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){D=[]}try{A=JSON.parse(localStorage.getItem("thesisArc1"))||[]}catch(e){A=[]}}
-function sv(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}push()}
-var BN="A-H NETWORKS COMPUTERS TECH",A=[],CF={dep:50,biz:BN,url:""},tmr;
+function sv(){REV=Date.now();try{localStorage.setItem(KEY,JSON.stringify(D));localStorage.setItem("thesisRev1",REV)}catch(e){}push()}
+var REV=0,BN="A-H NETWORKS COMPUTERS TECH",A=[],CF={dep:50,biz:BN,url:""},tmr;
 function sa(){try{localStorage.setItem("thesisArc1",JSON.stringify(A))}catch(e){}}
 function newSess(){var done=D.filter(function(c){return c.s>=14&&owe(c)===0}),keep=D.length-done.length;
  if(!done.length){alert("No client is both delivered and fully paid yet, so nothing can be archived.");return}
@@ -81,13 +81,18 @@ function openArc(){var q=A.slice().sort(function(a,b){return b.ar-a.ar});
  $("ab").innerHTML='<p class="sub">'+A.length+' archived · collected '+N(tc)+' · expenses '+N(te)+' · net '+N(tc-te)+'</p>'+(q.length?q.map(function(c){return'<div class="c GRN"><div class="nm">'+esc(c.n)+'</div><div class="tp">'+esc(c.t||"")+'</div><div class="sans" style="font-size:13px">'+esc(c.lv||"ND")+' · archived '+new Date(c.ar).toDateString()+' · paid '+N(c.pd||0)+'</div><div class="acts" style="margin-top:6px"><button onclick="unarc(\''+c.id+'\')">Restore to board</button></div></div>'}).join(""):'<div class="empty">Nothing archived yet.</div>');
  $("ad").showModal()}
 function unarc(id){var c=A.filter(function(x){return x.id===id})[0];A=A.filter(function(x){return x.id!==id});delete c.ar;D.push(c);sa();sv();render();openArc()}
-function cfl(){try{CF=Object.assign(CF,JSON.parse(localStorage.getItem("thesisCfg1")))}catch(e){}}
+function cfl(){try{REV=+localStorage.getItem("thesisRev1")||0}catch(e){}try{CF=Object.assign(CF,JSON.parse(localStorage.getItem("thesisCfg1")))}catch(e){}}
 function msg(t){$("sync").textContent=t}
-function push(){if(!CF.url)return;clearTimeout(tmr);tmr=setTimeout(function(){msg("Syncing...");fetch(CF.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({clients:D,archive:A})}).then(function(){msg("Cloud saved "+new Date().toLocaleTimeString())}).catch(function(){msg("Cloud sync failed")})},1500)}
+function push(){if(!CF.url)return;if(!D.length&&!A.length){msg("Not synced: board is empty");return}clearTimeout(tmr);tmr=setTimeout(function(){msg("Syncing...");fetch(CF.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({clients:D,archive:A,rev:REV})}).then(function(){msg("Cloud saved "+new Date().toLocaleTimeString())}).catch(function(){msg("Cloud sync failed")})},1500)}
 function pull(){if(!CF.url){alert("Add your cloud sync URL in Settings first.");return}
- fetch(CF.url).then(function(r){return r.json()}).then(function(j){var cl=Array.isArray(j)?j:(j.clients||null);if(cl&&confirm("Replace the data on this device with cloud data ("+cl.length+" clients)?")){D=cl;if(!Array.isArray(j)){A=j.archive||[];sa()}try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}render();msg("Pulled from cloud")}}).catch(function(){alert("Could not reach the cloud URL. Cloud sync works only from the downloaded file, not the claude.ai link.")})}
+ fetch(CF.url).then(function(r){return r.json()}).then(function(j){var cl=Array.isArray(j)?j:(j.clients||null);if(cl&&confirm("Replace the data on this device with cloud data ("+cl.length+" clients)?")){D=cl;if(!Array.isArray(j)){A=j.archive||[];REV=+j.rev||0;sa();try{localStorage.setItem("thesisRev1",REV)}catch(e){}}try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}render();msg("Pulled from cloud")}}).catch(function(){alert("Could not reach the cloud URL. Cloud sync works only from the downloaded file, not the claude.ai link.")})}
 function sopen(){$("sb").value=CF.biz;$("sp").value=CF.dep;$("su").value=CF.url;$("sd").showModal()}
-function ssave(){CF.biz=$("sb").value;CF.dep=+$("sp").value||50;CF.url=$("su").value.trim();try{localStorage.setItem("thesisCfg1",JSON.stringify(CF))}catch(e){}$("sd").close();render();push()}
+function ssave(){CF.biz=$("sb").value;CF.dep=+$("sp").value||50;CF.url=$("su").value.trim();try{localStorage.setItem("thesisCfg1",JSON.stringify(CF))}catch(e){}$("sd").close();render();chk()}
+function chk(){if(!CF.url)return;msg("Checking cloud...");
+ fetch(CF.url).then(function(r){return r.json()}).then(function(j){var cl=Array.isArray(j)?j:(j.clients||[]),ar=Array.isArray(j)?[]:(j.archive||[]),cr=Array.isArray(j)?0:(+j.rev||0),cn=cl.length+ar.length,ln=D.length+A.length;
+  if(cn&&(!ln||cr>REV)){if(confirm("Cloud has "+cl.length+" clients"+(cr?" (saved "+new Date(cr).toLocaleString()+")":"")+". Load them onto this device?"+(ln?"\n\nThis will replace the "+D.length+" clients here.":""))){D=cl;A=ar;REV=cr;try{localStorage.setItem(KEY,JSON.stringify(D));localStorage.setItem("thesisRev1",REV)}catch(e){}sa();render();msg("Loaded from cloud");return}}
+  if(ln&&(!cn||REV>cr)){push();return}
+  msg("Cloud and this device match")}).catch(function(){msg("Could not reach cloud")})}
 function exa(id){var c=g(id),v=prompt("Expense on this job (₦): printing, binding, checker fee");if(v&&+v>0){c.ex=(+c.ex||0)+ +v;c.u=Date.now();sv();render()}}
 function rcpt(id){var c=g(id),L=c.pay||[],sm=L.reduce(function(a,x){return a+x.a},0),oth=(+c.pd||0)-sm;
  var rows=(oth>0?'<tr><td>Earlier payments</td><td>'+N(oth)+'</td></tr>':'')+L.map(function(x){return'<tr><td>'+new Date(x.t).toDateString()+'</td><td>'+N(x.a)+'</td></tr>'}).join("");
@@ -119,7 +124,7 @@ function wa(id){var c=g(id),p=String(c.ph||"").replace(/\D/g,"");if(!p){alert("A
  c.lc=Date.now();if(c.fu&&days(c.fu)<=0)c.fu="";sv();render();window.open("https://wa.me/"+p+"?text="+encodeURIComponent(m),"_blank")}
 function N(x){return "₦"+Number(x).toLocaleString()}
 function render(){
- $("today").textContent=new Date().toDateString()+" · spiral bind and defenses target towards Oct · hardcover target: first week of Nov";
+ $("today").textContent=new Date().toDateString()+" · spiral bind and defenses target · hardcover target: first week of Nov";
  var f=$("fl").value,q=$("q").value.toLowerCase();
  var L=D.map(function(c){return{c:c,p:cls(c)}}).filter(function(o){var c=o.c;
   if(q&&(c.n+" "+c.t).toLowerCase().indexOf(q)<0)return false;
@@ -174,5 +179,5 @@ function save(){var n=$("n").value.trim();if(!n){$("n").focus();return}
 function rm(){if(confirm("Delete this client permanently?")){D=D.filter(function(c){return c.id!==eid});sv();dg.close();render()}}
 function exp(){var b=new Blob([JSON.stringify({clients:D,archive:A})],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="thesis-board-backup.json";a.click()}
 function imp(i){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var j=JSON.parse(r.result);if(Array.isArray(j)){D=j}else{D=j.clients||[];A=j.archive||[]}sa();sv();render()}catch(e){alert("That file is not a valid backup.")}};r.readAsText(f)}
-cfl();ld();render();
+cfl();ld();render();chk();
 </script></div><dialog id="rc"><div id="rcb"></div><div class="bar nop"><button class="p" onclick="window.print()">Print / Save as PDF</button><button onclick="$('rc').close()">Close</button></div></dialog></body></html>
